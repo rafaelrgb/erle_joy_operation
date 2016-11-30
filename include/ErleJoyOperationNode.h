@@ -12,9 +12,12 @@
 #ifndef _ERLE_JOY_OPERATION_NODE_H_
 #define _ERLE_JOY_OPERATION_NODE_H_
 
+#include <string>
 #include "Node.h"
 #include "joystick.hh"
 #include <mavros_msgs/OverrideRCIn.h>
+#include <mavros_msgs/SetMode.h>
+#include <mavros_msgs/CommandBool.h>
 
 #define MINRC   1100
 #define BASERC  1500
@@ -41,9 +44,13 @@ private:
 
   // ROS objects
   ros::Publisher rc_override_pub_;
+  ros::ServiceClient cl_mode_;
+  ros::ServiceClient cl_arming_;
 
   // Member functions
   void publishRCOverride( int roll, int pitch, int throttle, int yaw );
+  void setMode( std::string mode );
+  void setArming( bool arming );
 
 };
 

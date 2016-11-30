@@ -14,7 +14,7 @@
 
 ErleJoyOperationNode::ErleJoyOperationNode(ros::NodeHandle *nh)
   : Node(nh, 1000),
-    joystick_("/dev/input/js0")
+    joystick_("/dev/input/js2")
 {
     roll_ = BASERC,
     pitch_ = BASERC,
@@ -22,11 +22,15 @@ ErleJoyOperationNode::ErleJoyOperationNode(ros::NodeHandle *nh)
     yaw_ = BASERC;
 
     rc_override_pub_ = nh->advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 10);
+    cl_mode_ = nh->serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
+    cl_arming_ = nh->serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
 }
 
 ErleJoyOperationNode::~ErleJoyOperationNode()
 {
     rc_override_pub_.shutdown();
+    cl_mode_.shutdown();
+    cl_arming_.shutdown();
 }
 
 void ErleJoyOperationNode::controlLoop()
@@ -37,9 +41,41 @@ void ErleJoyOperationNode::controlLoop()
     {
       if (event.isButton())
       {
-          ROS_INFO("Button %u is %s\n",
-                   event.number,
-                   event.value == 0 ? "up" : "down");
+          if ( event.value != 0 )
+          {
+              if ( event.number == 0 )
+              {
+                  setMode("STABILIZE");
+              }
+              if ( event.number == 1 )
+              {
+                  setMode("ALT_HOLD");
+              }
+              if ( event.number == 2 )
+              {
+                  setMode("LOITER");
+              }
+              if ( event.number == 3 )
+              {
+                  setMode("LAND");
+              }
+              if ( event.number == 4 )
+              {
+                  setMode("RTL");
+              }
+              if ( event.number == 5 )
+              {
+                  setMode("GUIDED");
+              }
+              if ( event.number == 6 )
+              {
+                  setMode("AUTO");
+              }
+              if ( event.number == 7 )
+              {
+                  setArming(true);
+              }
+          }
       }
       else if (event.isAxis())
       {
@@ -53,7 +89,7 @@ void ErleJoyOperationNode::controlLoop()
           }
           if ( event.number == 4 )
           {
-              pitch_ = rc_value_v;
+              pitch_ = rc_value_h;
           }
           if ( event.number == 3 )
           {
@@ -84,4 +120,29 @@ void ErleJoyOperationNode::publishRCOverride( int roll, int pitch, int throttle,
     msg_override.channels[7] = 1100;
 
     rc_override_pub_.publish(msg_override);
+}
+
+void ErleJoyOperationNode::setMode( std::string mode )
+{
+    mavros_msgs::SetMode srv;
+    srv.request.base_mode = 0;
+    srv.request.custom_mode = mode;
+    if (cl_mode_.call(srv)) {
+        ROS_INFO("Send OK %d Value:", srv.response.success);
+    } else {
+        ROS_ERROR("Failed SetMode");
+        return;
+    }
+}
+
+void ErleJoyOperationNode::setArming( bool arming )
+{
+    mavros_msgs::CommandBool srv;
+    srv.request.value = arming;
+    if (cl_mode_.call(srv)) {
+        ROS_INFO("Send OK %d Value:", srv.response.success);
+    } else {
+        ROS_ERROR("Failed SetArming");
+        return;
+    }
 }
